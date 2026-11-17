@@ -3,6 +3,9 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Throwable;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -48,7 +51,27 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
             ],
+            'developer' => [
+                'temporaryPassword' => fn () => Auth::guard('platform')->check()
+                    ? $this->pullTemporaryPassword($request)
+                    : null,
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    private function pullTemporaryPassword(Request $request): ?string
+    {
+        $encrypted = $request->session()->pull('developer_temporary_password');
+
+        if (! is_string($encrypted)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($encrypted);
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

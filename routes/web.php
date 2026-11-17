@@ -26,6 +26,7 @@ Route::prefix('developer')->name('developer.')->group(function (): void {
         Route::post('schools/{school}/restore', [DeveloperSchoolController::class, 'restore'])->withTrashed()->name('schools.restore');
         Route::put('schools/{school}/subscription', [DeveloperSchoolController::class, 'subscription'])->name('schools.subscription');
         Route::post('schools/{school}/reset-access', [DeveloperSchoolController::class, 'sendReset'])->middleware('throttle:3,10')->name('schools.reset-access');
+        Route::post('schools/{school}/temporary-password', [DeveloperSchoolController::class, 'setTemporaryPassword'])->middleware('throttle:3,10')->name('schools.temporary-password');
         Route::get('plans', [DeveloperPlanController::class, 'index'])->name('plans.index');
         Route::post('plans', [DeveloperPlanController::class, 'store'])->name('plans.store');
         Route::patch('plans/{plan}', [DeveloperPlanController::class, 'update'])->name('plans.update');

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { Archive, Building2, KeyRound, Plus, RotateCcw, Save, ShieldCheck, UserRoundCog } from '@lucide/vue';
+import { ref } from 'vue';
 
 defineOptions({ layout: { title: 'School workspaces' } });
 
@@ -23,9 +24,24 @@ const props = defineProps<{
     filters: { q: string };
 }>();
 const page = usePage();
+const copied = ref(false);
+const showTemporaryPassword = ref(true);
 
 const inputClass = 'h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/10';
 const selectClass = 'h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus:border-cyan-300/60';
+
+const copyTemporaryPassword = async () => {
+    const temporaryPassword = page.props.developer?.temporaryPassword;
+
+    if (!temporaryPassword) return;
+
+    try {
+        await navigator.clipboard.writeText(temporaryPassword);
+        copied.value = true;
+    } catch {
+        copied.value = false;
+    }
+};
 </script>
 
 <template>
@@ -38,6 +54,12 @@ const selectClass = 'h-10 w-full rounded-xl border border-white/10 bg-slate-950/
 
         <div v-if="page.props.flash?.status" class="mt-6 rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-200" role="status">{{ page.props.flash.status }}</div>
         <div v-if="page.props.errors?.account" class="mt-6 rounded-xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-200" role="alert">{{ page.props.errors.account }}</div>
+        <div v-if="showTemporaryPassword && page.props.developer?.temporaryPassword" class="mt-4 rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-100" role="status">
+            <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div><p class="text-sm font-semibold">Temporary password · shown once</p><p class="mt-1 text-xs leading-5 text-amber-100/75">Share it with the school administrator through a secure channel. They must change it after sign-in.</p><code class="mt-3 inline-block rounded-lg border border-amber-200/15 bg-slate-950/60 px-3 py-2 font-mono text-sm text-white">{{ page.props.developer.temporaryPassword }}</code><span v-if="copied" class="ml-2 text-xs">Copied</span></div>
+                <div class="flex gap-2"><button type="button" class="rounded-lg border border-amber-200/20 px-3 py-2 text-xs font-semibold hover:bg-amber-100/10" @click="copyTemporaryPassword">Copy password</button><button type="button" class="rounded-lg px-3 py-2 text-xs text-amber-100/70 hover:bg-amber-100/10" @click="showTemporaryPassword = false">Dismiss</button></div>
+            </div>
+        </div>
 
         <Form action="/developer/schools" method="get" class="mt-6 flex max-w-xl gap-2">
             <input name="q" type="search" :value="filters.q" :class="inputClass" placeholder="Search schools, workspace codes, or administrator emails">
@@ -46,14 +68,16 @@ const selectClass = 'h-10 w-full rounded-xl border border-white/10 bg-slate-950/
         </Form>
 
         <section class="mt-7 rounded-2xl border border-white/10 bg-slate-900/65 p-5 sm:p-6">
-            <div class="flex items-start gap-3"><span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200"><Plus class="size-5" /></span><div><h2 class="font-semibold text-white">Add a school</h2><p class="mt-1 text-xs leading-5 text-slate-500">An administrator account is created with a random password. The setup link is sent by email; passwords are never shown here.</p></div></div>
-            <Form action="/developer/schools" method="post" v-slot="{ errors, processing }" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div class="flex items-start gap-3"><span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200"><Plus class="size-5" /></span><div><h2 class="font-semibold text-white">Add a school</h2><p class="mt-1 text-xs leading-5 text-slate-500">Leave the password blank to email a setup link, or enter a 14-character temporary password to show it once after creation. Temporary passwords must be changed at first use.</p></div></div>
+            <Form action="/developer/schools" method="post" v-slot="{ errors, processing }" class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-school-name">School name</label><input id="new-school-name" name="name" required maxlength="191" :class="inputClass" placeholder="Northstar Academy"><p v-if="errors.name" class="text-xs text-rose-300">{{ errors.name }}</p></div>
                 <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-school-code">Workspace code</label><input id="new-school-code" name="code" required minlength="3" maxlength="32" pattern="[A-Za-z0-9-]+" :class="inputClass" placeholder="NORTHSTAR"><p v-if="errors.code" class="text-xs text-rose-300">{{ errors.code }}</p></div>
                 <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-admin-name">Primary administrator</label><input id="new-admin-name" name="admin_name" required maxlength="191" :class="inputClass" placeholder="Admin name"><p v-if="errors.admin_name" class="text-xs text-rose-300">{{ errors.admin_name }}</p></div>
                 <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-admin-email">Administrator email</label><input id="new-admin-email" name="admin_email" type="email" required :class="inputClass" placeholder="admin@school.com"><p v-if="errors.admin_email" class="text-xs text-rose-300">{{ errors.admin_email }}</p></div>
+                <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-admin-password">Initial password (optional)</label><input id="new-admin-password" name="admin_password" type="password" minlength="14" autocomplete="new-password" :class="inputClass" placeholder="Leave blank to email setup link"><p v-if="errors.admin_password" class="text-xs text-rose-300">{{ errors.admin_password }}</p></div>
+                <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-admin-password-confirmation">Confirm initial password</label><input id="new-admin-password-confirmation" name="admin_password_confirmation" type="password" minlength="14" autocomplete="new-password" :class="inputClass" placeholder="Repeat password"></div>
                 <div class="space-y-1.5"><label class="text-xs font-medium text-slate-300" for="new-school-plan">Initial package</label><select id="new-school-plan" name="school_plan_id" :class="selectClass"><option value="">Unassigned</option><option v-for="plan in plans" :key="plan.id" :value="plan.id">{{ plan.name }} · {{ plan.currency }} {{ plan.price }}</option></select><p v-if="errors.school_plan_id" class="text-xs text-rose-300">{{ errors.school_plan_id }}</p></div>
-                <div class="md:col-span-2 xl:col-span-5"><button type="submit" :disabled="processing" class="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-60"><Building2 class="size-4" /> {{ processing ? 'Creating workspace…' : 'Create school workspace' }}</button></div>
+                <div class="md:col-span-2 xl:col-span-4"><button type="submit" :disabled="processing" class="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-60"><Building2 class="size-4" /> {{ processing ? 'Creating workspace…' : 'Create school workspace' }}</button></div>
             </Form>
         </section>
 
@@ -69,6 +93,7 @@ const selectClass = 'h-10 w-full rounded-xl border border-white/10 bg-slate-950/
                         <div class="flex flex-wrap items-center gap-2 xl:justify-end">
                             <span class="mr-1 text-xs text-slate-400">{{ school.subscription?.planName ?? 'No package' }} <span v-if="school.subscription">· {{ school.subscription.status }}</span></span>
                             <Form v-if="!school.archived && school.admin" :action="`/developer/schools/${school.id}/reset-access`" method="post"><button class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><KeyRound class="size-3.5" /> Reset access</button></Form>
+                            <Form v-if="!school.archived && school.admin" :action="`/developer/schools/${school.id}/temporary-password`" method="post" onsubmit="return window.confirm('Create a new one-time temporary password? The current password will stop working.')"><button class="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/20 px-3 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-300/10"><KeyRound class="size-3.5" /> Set temp password</button></Form>
                             <Form v-if="!school.archived" :action="`/developer/schools/${school.id}/toggle`" method="post"><button class="rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">{{ school.status === 'active' ? 'Disable' : 'Enable' }}</button></Form>
                             <Form v-if="school.archived" :action="`/developer/schools/${school.id}/restore`" method="post"><button class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-300/20 px-3 py-2 text-xs font-medium text-cyan-200 transition hover:bg-cyan-300/10"><RotateCcw class="size-3.5" /> Restore</button></Form>
                             <details v-if="!school.archived" class="relative">
@@ -80,6 +105,8 @@ const selectClass = 'h-10 w-full rounded-xl border border-white/10 bg-slate-950/
                                         <input name="code" required minlength="3" maxlength="32" :value="school.code" :class="inputClass" aria-label="Workspace code">
                                         <input name="admin_name" required :value="school.admin?.name" :class="inputClass" aria-label="Administrator name">
                                         <input name="admin_email" type="email" required :value="school.admin?.email" :class="inputClass" aria-label="Administrator email">
+                                        <input name="admin_password" type="password" minlength="14" autocomplete="new-password" :class="inputClass" aria-label="Set temporary password" placeholder="New temporary password (optional)">
+                                        <input name="admin_password_confirmation" type="password" minlength="14" autocomplete="new-password" :class="inputClass" aria-label="Confirm temporary password" placeholder="Confirm temporary password">
                                         <p v-if="Object.keys(errors).length" class="text-xs text-rose-300 sm:col-span-2">Review the school and administrator details.</p>
                                         <button type="submit" :disabled="processing" class="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-3 py-2 text-xs font-bold text-slate-950 sm:col-span-2"><Save class="size-3.5" /> Save client account</button>
                                     </Form>

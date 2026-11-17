@@ -16,6 +16,7 @@ The command prompts for a password without echoing it. Sign in at `/developer/lo
 
 - Create a school workspace and its first administrator account
 - Update the workspace name, code, and primary administrator
+- Set an initial password or issue a one-time temporary password; clients must change temporary passwords at first use
 - Enable or disable school access
 - Send a rate-limited password reset link to the primary administrator
 - Assign a package and subscription state
@@ -24,6 +25,8 @@ The command prompts for a password without echoing it. Sign in at `/developer/lo
 - Review recent platform actions in the audit history
 
 Package limits and feature lists are stored with each plan for administration. Payment processing and automatic quota enforcement are separate integrations and are not enabled by this portal alone.
+
+Client passwords are stored only as hashes and cannot be retrieved later. A developer can set a new temporary password, which is shown once in the portal and is never written to audit logs. Use a secure channel to share it with the client.
 
 ## Email delivery
 

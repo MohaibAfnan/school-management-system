@@ -12,13 +12,14 @@ use App\Models\User;
 use App\Services\PlatformAudit;
 use App\Tenancy\SchoolScope;
 use App\Tenancy\TenantContext;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -85,11 +86,17 @@ class DeveloperSchoolController extends Controller
 
     public function store(Request $request, TenantContext $tenant, PlatformAudit $audit): RedirectResponse
     {
+        $request->merge([
+            'code' => strtoupper(trim((string) $request->input('code'))),
+            'admin_email' => mb_strtolower(trim((string) $request->input('admin_email'))),
+        ]);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:191'],
             'code' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9-]+$/', 'unique:schools,code'],
             'admin_name' => ['required', 'string', 'max:191'],
             'admin_email' => ['required', 'email', 'max:191', 'unique:users,email'],
+            'admin_password' => ['nullable', 'string', PasswordRule::min(14)->mixedCase()->numbers()->symbols(), 'confirmed'],
             'school_plan_id' => ['nullable', 'integer', Rule::exists('school_plans', 'id')->where('is_active', true)],
         ]);
 
@@ -114,9 +121,10 @@ class DeveloperSchoolController extends Controller
             $admin = User::query()->create([
                 'name' => $data['admin_name'],
                 'email' => mb_strtolower($data['admin_email']),
-                'password' => Hash::make(Str::random(64)),
+                'password' => Hash::make($data['admin_password'] ?? Str::password(24)),
                 'role_id' => $role->id,
             ]);
+            $admin->forceFill(['must_change_password' => filled($data['admin_password'] ?? null)])->save();
 
             if (! empty($data['school_plan_id'])) {
                 SchoolSubscription::query()->create([
@@ -132,9 +140,13 @@ class DeveloperSchoolController extends Controller
         });
 
         $tenant->set($school);
-        $resetStatus = $this->configureMailForSchool($school)
-            ? $this->sendResetLink(mb_strtolower($data['admin_email']))
-            : 'delivery_unconfigured';
+        $mailConfigured = $this->configureMailForSchool($school);
+        $resetStatus = filled($data['admin_password'] ?? null)
+            ? 'temporary_password_set'
+            : ($mailConfigured ? $this->sendResetLink(mb_strtolower($data['admin_email'])) : 'delivery_unconfigured');
+        if (filled($data['admin_password'] ?? null)) {
+            $request->session()->flash('developer_temporary_password', Crypt::encryptString($data['admin_password']));
+        }
         $tenant->set(null);
         $audit->record($request, $request->user('platform'), 'school.created', $school, 'school', $school->id, after: [
             'name' => $school->name,
@@ -143,9 +155,11 @@ class DeveloperSchoolController extends Controller
             'plan_id' => $data['school_plan_id'] ?? null,
         ]);
 
-        $message = $resetStatus === Password::RESET_LINK_SENT
-            ? 'School created. An account setup link was sent to the school administrator.'
-            : 'School created, but email delivery is not configured or the setup link could not be sent. Configure SMTP before using Reset access.';
+        $message = match ($resetStatus) {
+            'temporary_password_set' => 'School created. The temporary password is shown once below; the administrator must change it after signing in.',
+            Password::RESET_LINK_SENT => 'School created. An account setup link was sent to the school administrator.',
+            default => 'School created, but email delivery is not configured or the setup link could not be sent. Configure platform email before using Reset access.',
+        };
 
         return to_route('developer.schools.index')->with('status', $message);
     }
@@ -156,11 +170,13 @@ class DeveloperSchoolController extends Controller
 
         $tenant->set($school);
         $admin = $this->primaryAdmin();
+        $request->merge(['code' => strtoupper(trim((string) $request->input('code'))), 'admin_email' => mb_strtolower(trim((string) $request->input('admin_email')))]);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:191'],
             'code' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9-]+$/', Rule::unique('schools', 'code')->ignore($school->id)],
             'admin_name' => ['required', 'string', 'max:191'],
             'admin_email' => ['required', 'email', 'max:191', Rule::unique('users', 'email')->ignore($admin?->id)],
+            'admin_password' => ['nullable', 'string', PasswordRule::min(14)->mixedCase()->numbers()->symbols(), 'confirmed'],
         ]);
 
         $before = ['name' => $school->name, 'code' => $school->code, 'admin_email' => $admin?->email];
@@ -174,6 +190,14 @@ class DeveloperSchoolController extends Controller
         if ($admin) {
             $emailChanged = $admin->email !== mb_strtolower($data['admin_email']);
             $admin->fill(['name' => $data['admin_name'], 'email' => mb_strtolower($data['admin_email'])])->save();
+
+            if (filled($data['admin_password'] ?? null)) {
+                $admin->forceFill([
+                    'password' => Hash::make($data['admin_password']),
+                    'must_change_password' => true,
+                ])->save();
+                $request->session()->flash('developer_temporary_password', Crypt::encryptString($data['admin_password']));
+            }
 
             if ($emailChanged) {
                 $admin->forceFill(['email_verified_at' => null])->save();
@@ -194,9 +218,13 @@ class DeveloperSchoolController extends Controller
             'admin_email' => mb_strtolower($data['admin_email']),
         ]);
 
-        return back()->with('status', $emailChanged
-            ? 'School details saved. Send a new access link to the updated administrator email.'
-            : 'School details saved.');
+        $message = filled($data['admin_password'] ?? null)
+            ? 'School details saved. The temporary password is shown once below and must be changed at first sign-in.'
+            : ($emailChanged
+                ? 'School details saved. Send a new access link to the updated administrator email.'
+                : 'School details saved.');
+
+        return back()->with('status', $message);
     }
 
     public function toggle(Request $request, School $school, PlatformAudit $audit): RedirectResponse
@@ -276,6 +304,31 @@ class DeveloperSchoolController extends Controller
         }
 
         return back()->with('status', 'A password reset link was sent to the school administrator.');
+    }
+
+    public function setTemporaryPassword(Request $request, School $school, TenantContext $tenant, PlatformAudit $audit): RedirectResponse
+    {
+        abort_if($school->trashed(), 404);
+        $tenant->set($school);
+        $admin = $this->primaryAdmin();
+
+        if (! $admin) {
+            $tenant->set(null);
+
+            return back()->withErrors(['account' => 'This school does not have an administrator account.']);
+        }
+
+        $temporaryPassword = Str::password(24);
+        $admin->forceFill([
+            'password' => Hash::make($temporaryPassword),
+            'must_change_password' => true,
+        ])->save();
+        $tenant->set(null);
+
+        $request->session()->flash('developer_temporary_password', Crypt::encryptString($temporaryPassword));
+        $audit->record($request, $request->user('platform'), 'school.admin_temporary_password_set', $school, 'user', $admin->id, after: ['admin_email' => $admin->email, 'must_change_password' => true]);
+
+        return back()->with('status', 'A temporary password was created and is shown once below. Share it securely; the administrator must change it after signing in.');
     }
 
     private function primaryAdmin(): ?User
