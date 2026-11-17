@@ -2,12 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\School;
+use App\Models\User;
+use App\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Laravel\Fortify\Fortify;
+use Illuminate\Http\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(TenantContext::class);
     }
 
     /**
@@ -24,8 +31,41 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        config([
+            'mail.platform_default' => config('mail.default'),
+            'mail.platform_from_address' => config('mail.from.address'),
+            'mail.platform_from_name' => config('mail.from.name'),
+        ]);
+
         $this->configureDefaults();
         Schema::defaultStringLength(191);
+
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $schoolCode = strtoupper(trim((string) $request->input('school_code')));
+            $school = School::query()
+                ->where(function ($query) use ($schoolCode): void {
+                    $query->where('code', $schoolCode)
+                        ->orWhere('slug', strtolower($schoolCode));
+                })
+                ->where('status', 'active')
+                ->first();
+
+            if (! $school) {
+                return null;
+            }
+
+            app(TenantContext::class)->set($school);
+
+            $user = User::query()->where('email', Str::lower(trim((string) $request->input('email'))))->first();
+
+            if (! $user || ! Hash::check((string) $request->input('password'), $user->password)) {
+                return null;
+            }
+
+            $request->session()->put('active_school_id', $school->id);
+
+            return $user;
+        });
     }
 
     /**

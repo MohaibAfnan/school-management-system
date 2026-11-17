@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -26,6 +26,7 @@ const sidebarNavItems: NavItem[] = [
 ];
 
 const { isCurrentOrParentUrl } = useCurrentUrl();
+const page = usePage();
 </script>
 
 <template>
@@ -41,6 +42,22 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                     class="flex flex-col space-y-1 space-x-0"
                     aria-label="Settings"
                 >
+                    <Button
+                        v-if="page.props.auth?.role === 'admin'"
+                        variant="ghost"
+                        :class="['w-full justify-start', { 'bg-muted': isCurrentOrParentUrl('/settings/mail') }]"
+                        as-child
+                    >
+                        <Link href="/settings/mail">School email</Link>
+                    </Button>
+                    <Button
+                        v-if="page.props.auth?.role === 'admin'"
+                        variant="ghost"
+                        :class="['w-full justify-start', { 'bg-muted': isCurrentOrParentUrl('/settings/activation') }]"
+                        as-child
+                    >
+                        <Link href="/settings/activation">Activation</Link>
+                    </Button>
                     <Button
                         v-for="item in sidebarNavItems"
                         :key="toUrl(item.href)"

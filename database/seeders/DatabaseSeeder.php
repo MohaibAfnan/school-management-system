@@ -5,12 +5,14 @@ namespace Database\Seeders;
 use App\Models\ClassRoom;
 use App\Models\Course;
 use App\Models\Role;
+use App\Models\School;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use App\Tenancy\TenantContext;
 
 class DatabaseSeeder extends Seeder
 {
@@ -18,6 +20,27 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        if (! app()->environment('local', 'testing')) {
+            return;
+        }
+
+        $school = School::query()->firstOrCreate(
+            ['code' => 'DEMO'],
+            [
+                'name' => 'Development School',
+                'slug' => 'development-school',
+                'installation_id' => (string) \Illuminate\Support\Str::uuid(),
+                'status' => 'active',
+                'deployment_mode' => 'hosted',
+            ],
+        );
+
+        if (app()->environment('local') && $school->deployment_mode !== 'local') {
+            $school->forceFill(['deployment_mode' => 'local'])->save();
+        }
+
+        app(TenantContext::class)->set($school);
+
         $adminRole = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator', 'permissions' => ['all']]);
         $teacherRole = Role::firstOrCreate(['slug' => 'teacher'], ['name' => 'Teacher', 'permissions' => ['manage_courses', 'manage_grades']]);
         $studentRole = Role::firstOrCreate(['slug' => 'student'], ['name' => 'Student', 'permissions' => ['view_courses']]);

@@ -12,6 +12,13 @@ export type User = {
 
 export type Auth = {
     user: User;
+    role?: string | null;
+    school?: {
+        id: number;
+        name: string;
+        code: string;
+        slug: string;
+    } | null;
 };
 
 export type Passkey = {

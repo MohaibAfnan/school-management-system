@@ -178,7 +178,18 @@ These modules should be added only when the school's operational priorities are 
 
 ## Deployment and licensing modes
 
-Use one application codebase and one permission model with explicit deployment profiles. Deployment mode changes integrations and connectivity behavior; it must not weaken record-level authorization.
+Use one application codebase and one permission model with explicit deployment profiles. Deployment mode changes integrations and connectivity behavior; it must not weaken record-level authorization. The hosted product is a multi-tenant SaaS: tenant isolation is a core data-model and authorization boundary, not a later feature.
+
+### SaaS tenant isolation foundation
+
+- Create a school/tenant record for every customer and require a tenant context for every school-owned read, write, background job, notification, export, and uploaded file.
+- Store a `school_id` foreign key on tenant-owned records, including users, student and teacher profiles, classes, courses, enrollments, attendance, grades, lessons, assignments, finance, and school settings. Add tenant-aware unique constraints (for example, student number, teacher number, course code, and class name within a school). Keep email globally unique in the initial release because Laravel's standard reset-token store is keyed by email; move to a shared identity/membership model before allowing one email to belong to multiple school workspaces.
+- Resolve the tenant from a validated school workspace code during login (with a later option for verified custom domains/subdomains). Store the active tenant in the authenticated session and validate membership on every request.
+- Apply server-side tenant scopes and authorization policies. Fail closed when tenant context is missing. Never trust a `school_id` supplied by a form, URL, mobile client, or job payload without checking it against the authenticated tenant.
+- Keep school roles, permissions, SMTP settings, license/plan state, and configuration scoped to the tenant. Platform support access, if introduced, must be a separate privileged role with explicit, audited access.
+- Treat tenant isolation as a release-blocking security requirement: test cross-tenant access on direct IDs, relationships, searches, exports, file downloads, queues, notifications, password-reset flows, and API endpoints.
+
+For the initial release, a person account is scoped to one school workspace and email is globally unique. If guardians or staff must use one identity across multiple schools, add an explicit tenant-membership model, tenant-aware password-reset storage, and a school switcher; do not weaken tenant filters to make shared logins work.
 
 ### Local / offline installation
 
@@ -192,6 +203,8 @@ Use one application codebase and one permission model with explicit deployment p
 ### Online hosted installation
 
 - Host the Laravel application and database on a secure live server. The web app and mobile apps connect to that same backend over HTTPS; mobile clients must never connect directly to the database.
+- Operate as a multi-tenant SaaS with school-level data isolation, tenant-aware login/workspace selection, tenant-specific settings, backups, and subscription/feature entitlements.
+- Keep platform-level activation and SaaS subscription state separate from a school's users, role permissions, and optional school SMTP configuration.
 - The backend is the source of truth for authentication, permissions, approvals, data validation, audit history, notifications, and synchronization.
 - Use a versioned API with scoped access tokens, rate limits, request validation, and revocation. Store tokens securely on devices and support lost-device/session revocation.
 - Queue email, push notifications, report generation, and other slow work. Use a supported push provider for mobile alerts, with in-app notification records retained by the backend.
@@ -202,6 +215,8 @@ Use one application codebase and one permission model with explicit deployment p
 - Expose a small set of explicit, validated server-side capabilities such as `deployment_mode`, `mail_available`, `push_available`, and `license_status`; clients should adapt their interface to these capabilities rather than infer them from URLs.
 - An offline deployment may continue using local accounts and local data. Online email, SMS, payment, remote license, and cloud backup features require their configured service and connectivity.
 - Backups, updates, license renewal, notification retries, and time-sensitive approvals need defined behavior when a device is offline and when it reconnects.
+- School SMTP settings are tenant-specific and used for school-user invitations, verification, password recovery, and school notices. Store SMTP secrets encrypted server-side, mask them in the UI, and provide an authorized test-send action. Never load one school's mail credentials for another school's messages.
+- Use a separate platform mail channel for SaaS operator notices and hosted activation/subscription messages. In a local installation, the configured local SMTP transport may send the activation request to the software provider.
 - Show connection/sync state and the last successful sync in mobile apps. If offline mobile use is supported later, cache only necessary records, encrypt local storage, and resolve edits through server-side conflict handling after reconnection.
 
 ## Role-based access and approval model
@@ -226,6 +241,7 @@ Do not rely on one broad role string or hide buttons in the interface as the sec
 - Users can change their password after authentication and request a reset through their verified email when SMTP is configured. Reset links are single-use, expire, are rate-limited, and revoke other sessions after successful reset. Log the event metadata for admin oversight without exposing the password or token.
 - In a fully offline installation, provide an administrator-assisted reset/activation path using a one-time credential that must be replaced at first use. Clearly distinguish this from email verification; do not expose verification codes or reset secrets in the UI or application logs.
 - The shared account database is the canonical source: a successful profile or credential update applies to the same account across web and mobile clients. Invalidate old sessions/tokens as appropriate, notify the user, and show admins an audit event (who/which account, when, channel, and outcome), never the credential value.
+- In SaaS mode, scope account lookup, invitations, password reset, verification, and throttling to the selected school workspace. A reset request in one school must never reveal or reset an account in another school.
 - Apply these defaults on both web and mobile. “Request” means a durable approval record with status and audit history, not a client-side button that temporarily bypasses authorization.
 
 | Resource / action | Student | Teacher | Admin / authorized staff |
@@ -259,6 +275,7 @@ For records with an approval workflow, creation should produce a draft or pendin
 - Keep authorization, business rules, and validation on the backend. A mobile screen hiding a button is never a substitute for backend permission checks.
 - Use a shared API contract for login/session renewal, profiles, class/subject assignments, timetable, attendance, results, fees, LMS content, approvals, and notifications.
 - Support device/session revocation, app version policy, secure token storage, and clear handling for lost connectivity. The API returns only the user's permitted records.
+- Require an authenticated tenant context on every API request and ensure device tokens cannot switch schools by changing a request parameter.
 - Start with online mobile use against the hosted backend. Add encrypted read-only offline access or queued submissions only after data sensitivity, conflict resolution, and device security requirements are agreed.
 
 ## Activation request and notification workflow
@@ -354,6 +371,7 @@ This flow is a manual product-license activation process, not proof that a schoo
 - Require backend authorization for every API/web read and write, including mobile calls, file downloads, exports, and background jobs; enforce school/campus and person-level scoping.
 - Require MFA or passkeys for privileged hosted accounts where feasible; provide safe local recovery procedures without a hidden bypass account.
 - Protect license issuance keys and activation credentials; use installation-scoped signed licenses and prevent secrets from appearing in client props, logs, or notifications.
+  - Package only the public license-verification key with the application. Keep the Ed25519 private signing key in a separate trusted issuer environment, back it up securely, and require PHP's Sodium extension where license keys are issued or activated.
 - Keep email as an alert channel only for approval workflows; require authenticated approval and record the approver and decision.
 - Protect mobile sessions with secure token storage and revocation; avoid storing sensitive student records on-device unless encrypted offline support is explicitly designed.
 - Protect authentication with verified accounts, secure sessions, rate limiting, and multi-factor options for privileged users.

@@ -19,6 +19,7 @@ defineOptions({
 const props = defineProps<{
     token: string;
     email: string;
+    schoolCode?: string;
     passwordRules: string;
 }>();
 
@@ -30,7 +31,7 @@ const inputEmail = ref(props.email);
 
     <Form
         v-bind="update.form()"
-        :transform="(data) => ({ ...data, token, email })"
+        :transform="(data) => ({ ...data, token, email, school_code: schoolCode })"
         :reset-on-success="['password', 'password_confirmation']"
         v-slot="{ errors, processing }"
     >

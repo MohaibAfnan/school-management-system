@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\SchoolSmtpSettingsController;
+use App\Http\Controllers\Settings\SchoolActivationController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +15,19 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('settings/mail', [SchoolSmtpSettingsController::class, 'edit'])->name('school-mail.edit');
+    Route::put('settings/mail', [SchoolSmtpSettingsController::class, 'update'])->name('school-mail.update');
+    Route::post('settings/mail/test', [SchoolSmtpSettingsController::class, 'test'])
+        ->middleware('throttle:3,1')
+        ->name('school-mail.test');
+    Route::get('settings/activation', [SchoolActivationController::class, 'edit'])->name('school-activation.edit');
+    Route::post('settings/activation/request', [SchoolActivationController::class, 'requestActivation'])
+        ->middleware('throttle:1,5')
+        ->name('school-activation.request');
+    Route::post('settings/activation', [SchoolActivationController::class, 'activate'])
+        ->middleware('throttle:5,1')
+        ->name('school-activation.activate');
+
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])
