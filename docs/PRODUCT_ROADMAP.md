@@ -75,7 +75,9 @@ Use role-based permissions with campus, class, and record scope where appropriat
 ### 4. Attendance and safeguarding
 
 - Daily and lesson-level attendance, late arrival, early departure, excused absence, and other configurable statuses
-- Teacher-friendly roster entry, bulk actions, correction requests, and authorized approval
+- A class teacher can enter attendance for their assigned class and can correct or remove an entry for up to 10 seconds after saving. Measure this window using the server's saved timestamp, never the device clock.
+- After the 10-second correction window, a teacher must submit an admin request to update or remove student attendance. The approved correction is recorded as an auditable amendment; preserve the original event rather than physically erasing history.
+- Admin attendance review, bulk actions, correction requests, and class/date locking
 - Attendance alerts to guardians through configured channels, with quiet hours and delivery status
 - Absence reasons and supporting evidence with limited access
 - Attendance summaries by student, class, course, date range, and academic period
@@ -151,25 +153,25 @@ These modules should be added only when the school's operational priorities are 
 
 ### 12. Teacher mobile app and approval workflows
 
-- Teachers can securely sign in to the mobile app and see only their own profile, assigned classes, subjects, timetable, and students needed for teaching.
-- Teachers can record attendance for assigned classes and submit it for approval when school policy requires approval. Show submitted, approved, rejected, and correction-requested states with timestamps and approver notes.
+- Teachers have a dedicated, responsive web portal as well as the mobile app. Both show only their own profile, assigned classes, subjects, timetable, and students needed for teaching.
+- A class teacher can record attendance for their assigned class and can update/delete a just-saved entry for 10 seconds, measured on the server. After that window, changes require an admin request and approval; retain the original record and correction history.
 - Teachers can create result/assessment entries for their assigned classes and subjects. New entries should be drafts until the configured review/publish workflow is complete.
-- Teachers can read records in their assignment scope. Updates and deletions to protected records (including published results, subject assignments, and submitted attendance) require a formal request unless the administrator has granted a time-limited permission.
+- Teachers can read records in their assignment scope. Updates and deletions to protected records (including published results and subject assignments) require a formal request unless the administrator has granted a time-limited permission. Attendance follows its separate 10-second correction window and admin approval rule.
 - A teacher may request temporary update permission for a specific module, class/subject scope, and duration, with a reason. The administrator can approve or reject it; an approval must automatically expire at the stated time and cannot exceed the requested scope.
 - Subject catalogue and official class/teacher assignments should remain administratively governed. Teachers can request a new subject or a change; an administrator approves it before it becomes a shared school record.
-- Teacher profile displays their own permitted HR information, timetable, attendance history, leave balance/status, and salary statements. Salary and HR data are private to the teacher and authorized HR/finance staff.
+- Teacher profile displays their own permitted HR information, timetable, attendance history, leave request/status, and salary statements. Salary and HR data are private to the teacher and authorized HR/finance staff.
 
 ### 13. Teacher attendance, leave, and payroll self-service
 
-- Teacher check-in/attendance is a separate workflow from student classroom attendance. A teacher submits a dated attendance entry or correction; it remains pending until an authorized administrator approves it.
-- Leave requests include leave type, date range, reason, optional supporting document, and handover/substitute details where required. Validate date conflicts and available balance before submission.
+- Teacher check-in/attendance is a separate workflow from student classroom attendance. The teacher submits their own attendance through the app; it remains pending until an authorized administrator approves it. Corrections also go through an admin request.
+- Teachers may submit leave requests with leave type, date range, reason, optional supporting document, and handover/substitute details where required. The leave ledger, balances, approvals, rejections, and official leave record are managed only by authorized administrators. Validate date conflicts and available balance before an admin decision.
 - Admins receive an in-app notification and an email when a teacher submits an attendance approval request, attendance correction, or leave request. Teachers receive an in-app status update and optional email when a decision is made.
 - Approval, rejection, comments, changes, and timestamps are recorded in an audit trail. Email notifications alert the administrator but do not themselves approve a request.
 - Payroll/HR users maintain salary structures, pay periods, payslips, and authorized adjustments. Teachers can view and download only their own published salary statements; the app should not calculate statutory payroll obligations until the deployment region and rules are confirmed.
 
 ### 14. Student mobile app and student self-service
 
-- Students can read only their own published results, fee statements, invoices/receipts, LMS courses and materials, timetable, subjects, class teacher, announcements, and profile.
+- Students have a dedicated, responsive web portal and mobile app. They can read only their own published results, fee statements, invoices/receipts, LMS courses and materials, timetable, subjects, class teacher, announcements, and profile.
 - Students can edit only an explicit allowlist of low-risk profile fields. Changes save to the shared application database and become visible to authorized web and mobile users; sensitive changes such as legal name, date of birth, guardian links, class placement, and student identifier require an administrator request/approval.
 - Every profile change is validated, timestamped, and attributable to its user. Students cannot edit grades, attendance records, fees, class/course membership, or another student's information.
 - Parent/guardian access is a separate role linked to explicitly authorized students. Guardians can view their linked students' permitted records and receive school communications, but cannot impersonate the student.
@@ -219,6 +221,11 @@ Do not rely on one broad role string or hide buttons in the interface as the sec
 
 - Disable unrestricted public self-registration. Create the first school administrator through a one-time setup flow; after setup, admins invite or provision users and assign roles. Students and guardians receive accounts only after their school records and relationships are established.
 - Keep account authentication separate from school role assignment and product activation. A valid login alone must not grant access to school records.
+- When a teacher is hired or a student is admitted, an administrator creates or provisions the account and assigns its role/scope. If the person has an email address and SMTP is available, send a time-limited, single-use invitation link so they can set their own password; do not email a permanent password or plaintext credential.
+- Administrators can resend/revoke an invitation and see delivery and account-status events, but never see the user's password, reset token, or activation secret. Resending issues a new token and invalidates the prior unused token.
+- Users can change their password after authentication and request a reset through their verified email when SMTP is configured. Reset links are single-use, expire, are rate-limited, and revoke other sessions after successful reset. Log the event metadata for admin oversight without exposing the password or token.
+- In a fully offline installation, provide an administrator-assisted reset/activation path using a one-time credential that must be replaced at first use. Clearly distinguish this from email verification; do not expose verification codes or reset secrets in the UI or application logs.
+- The shared account database is the canonical source: a successful profile or credential update applies to the same account across web and mobile clients. Invalidate old sessions/tokens as appropriate, notify the user, and show admins an audit event (who/which account, when, channel, and outcome), never the credential value.
 - Apply these defaults on both web and mobile. “Request” means a durable approval record with status and audit history, not a client-side button that temporarily bypasses authorization.
 
 | Resource / action | Student | Teacher | Admin / authorized staff |
@@ -227,8 +234,8 @@ Do not rely on one broad role string or hide buttons in the interface as the sec
 | Student profile and guardian data | Own permitted profile only | Read assigned students, minimum necessary fields | Manage within campus/school scope; restricted fields audited |
 | Published results | Read own results | Read assigned records; create drafts; request update/delete or use an approved temporary grant | Review, publish, correct, or approve within assigned scope |
 | Subjects and course assignments | Read own current subjects | Read assigned subjects; request catalogue/assignment changes | Create and manage official catalogue and assignments |
-| Student classroom attendance | Read own attendance | Submit attendance for assigned class; request correction after submission | Review/approve corrections and manage policy |
-| Teacher attendance and leave | Not applicable | Submit own attendance/leave requests; read own history and decisions | Approve/reject, manage balances/policy, and audit decisions |
+| Student classroom attendance | Read own attendance | Assigned class teacher records attendance; update/delete for 10 seconds after save; thereafter request admin approval | Review/approve later corrections, manage policy, and audit decisions |
+| Teacher attendance and leave | Not applicable | Submit own attendance/leave requests; read own history and decisions | Owns and manages the leave ledger; approve/reject teacher attendance and leave requests |
 | Fees and payments | Read own permitted statements and receipts | No finance access by default | Finance role manages transactions; admin access only when explicitly granted |
 | Salary and payslips | Not applicable | Read own published records only | HR/finance roles manage payroll records; access audited |
 | LMS, timetable, announcements | Read own published/assigned items | Manage permitted content for assigned classes; protected changes follow workflow | Configure and oversee within assigned scope |
@@ -240,6 +247,7 @@ For records with an approval workflow, creation should produce a draft or pendin
 - Model permissions as explicit actions such as `results.create`, `results.update`, `results.delete`, `attendance.submit`, `attendance.correct`, `subjects.request`, `profile.update`, and `leave.submit`.
 - Scope each permission to a school/campus and, where appropriate, specific class, subject, student, or record. Deny access when no scope is present.
 - A temporary grant records who requested it, the reason, requested scope, approver, granted scope, start/end time, and revocation/expiry. Enforce the grant on every backend request and expire it automatically.
+- For student classroom attendance, the 10-second edit/delete window starts at the server-recorded save time. After it expires, even the class teacher must use the admin-request workflow; administrator approval is required and the original attendance event remains auditable.
 - A request has a type, target record or proposed change, reason, attachments if needed, state, assigned approver, decision, comments, and full audit history. States include submitted, pending, approved, rejected, cancelled, and expired where relevant.
 - Email and in-app messages alert the administrator to new requests. Decisions happen in the authenticated admin interface, not by replying to email. Notify the requester when the request is decided or a temporary grant is about to expire.
 - Where safe, let teachers create a draft immediately but require review before publishing. For destructive or historical changes, use a correction workflow rather than deleting the original record.
@@ -298,6 +306,7 @@ This flow is a manual product-license activation process, not proof that a schoo
 - Assignments, lesson resources, assessments, and configurable grading
 - Grade review and report-card publication
 - Student and guardian portal views
+- Dedicated teacher and student web portals with responsive layouts and the same scoped permissions as the mobile apps
 - Notifications for attendance, due dates, and published results
 - Teacher and student mobile API foundations, role-scoped data access, and core mobile workflows
 - Teacher attendance, leave requests, and admin approval notifications
