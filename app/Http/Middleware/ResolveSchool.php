@@ -13,6 +13,19 @@ class ResolveSchool
     public function handle(Request $request, Closure $next): Response
     {
         $context = app(TenantContext::class);
+
+        if ($request->is('developer', 'developer/*')) {
+            $context->set(null);
+            config([
+                'mail.default' => config('mail.platform_default', 'log'),
+                'mail.from.address' => config('mail.platform_from_address'),
+                'mail.from.name' => config('mail.platform_from_name'),
+            ]);
+            app('mail.manager')->purge();
+
+            return $next($request);
+        }
+
         $school = null;
         $sessionSchoolId = $request->session()->get('active_school_id');
 

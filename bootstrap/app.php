@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('developer*')
+            ? route('developer.login')
+            : route('login'));
 
         $middleware->alias([
             'school.license' => EnsureSchoolLicenseActive::class,
