@@ -46,6 +46,18 @@ class AuthenticationTest extends TestCase
         $this->get(route('dashboard'))->assertOk();
     }
 
+    public function test_temporary_password_login_redirects_directly_to_password_change()
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['must_change_password' => true])->save();
+
+        $this->post(route('login.store'), [
+            'school_code' => 'DEMO',
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertRedirect(route('security.edit', absolute: false));
+    }
+
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
     {
         $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
