@@ -13,6 +13,7 @@ import ManageTwoFactor from '@/components/ManageTwoFactor.vue';
 // oxfmt-ignore
 type Props = {
     passwordRules: string;
+    mustChangePassword: boolean;
 } & ManageTwoFactorProps;
 
 const props = defineProps<Props>();
@@ -35,6 +36,9 @@ defineOptions({
     <h1 class="sr-only">Security settings</h1>
 
     <div class="space-y-6">
+        <div v-if="props.mustChangePassword" class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200" role="status">
+            This is a temporary password. Choose a new password below to finish signing in and continue to your dashboard.
+        </div>
         <Heading
             variant="small"
             title="Update password"

@@ -110,6 +110,23 @@ class SecurityTest extends TestCase
         $this->get(route('security.edit'))->assertOk();
     }
 
+    public function test_changing_a_temporary_password_finishes_sign_in_and_clears_the_flag()
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['must_change_password' => true])->save();
+
+        $this->actingAs($user)
+            ->put(route('user-password.update'), [
+                'current_password' => 'password',
+                'password' => 'New-secure-password-42!',
+                'password_confirmation' => 'New-secure-password-42!',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertFalse((bool) $user->refresh()->must_change_password);
+    }
+
     public function test_correct_password_must_be_provided_to_update_password()
     {
         $user = User::factory()->create();

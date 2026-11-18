@@ -21,6 +21,7 @@ class SecurityController extends Controller
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'mustChangePassword' => (bool) $request->user()->must_change_password,
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {
@@ -38,6 +39,7 @@ class SecurityController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
+        $isTemporaryPassword = (bool) $request->user()->must_change_password;
         $request->user()->update([
             'password' => $request->password,
         ]);
@@ -45,6 +47,6 @@ class SecurityController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 
-        return back();
+        return $isTemporaryPassword ? to_route('dashboard') : back();
     }
 }
