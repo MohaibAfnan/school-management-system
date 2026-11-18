@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\School;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use App\Tenancy\SchoolScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -42,29 +43,22 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         Fortify::authenticateUsing(function (Request $request): ?User {
-            $schoolCode = strtoupper(trim((string) $request->input('school_code')));
-            $school = School::query()
-                ->where(function ($query) use ($schoolCode): void {
-                    $query->whereRaw('UPPER(code) = ?', [$schoolCode])
-                        ->orWhere('slug', strtolower($schoolCode));
-                })
-                ->where('status', 'active')
+            $user = User::withoutGlobalScope(SchoolScope::class)
+                ->where('email', Str::lower(trim((string) $request->input('email'))))
                 ->first();
 
-            if (! $school) {
+            if (! $user || ! Hash::check((string) $request->input('password'), $user->password)) {
                 throw ValidationException::withMessages([
-                    'school_code' => 'Enter the active school workspace code provided by your school.',
+                    'email' => 'These credentials do not match our records.',
                 ]);
             }
 
-            app(TenantContext::class)->set($school);
-
-            $user = User::query()->where('email', Str::lower(trim((string) $request->input('email'))))->first();
-
-            if (! $user || ! Hash::check((string) $request->input('password'), $user->password)) {
-                return null;
+            $school = School::query()->find($user->school_id);
+            if (! $school || $school->status !== 'active') {
+                throw ValidationException::withMessages(['email' => 'This school workspace is unavailable.']);
             }
 
+            app(TenantContext::class)->set($school);
             $request->session()->put('active_school_id', $school->id);
 
             return $user;

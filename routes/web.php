@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Auth\SelfServiceRegistrationController;
 use App\Http\Controllers\Developer\DeveloperAuthController;
 use App\Http\Controllers\Developer\DeveloperDashboardController;
 use App\Http\Controllers\Developer\DeveloperPlanController;
@@ -8,6 +9,14 @@ use App\Http\Controllers\Developer\DeveloperSchoolController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+Route::middleware('guest')->group(function (): void {
+    Route::get('register', [SelfServiceRegistrationController::class, 'create'])->name('register');
+    Route::post('register', [SelfServiceRegistrationController::class, 'store'])->middleware('throttle:3,10')->name('register.store');
+    Route::get('register/verify', [SelfServiceRegistrationController::class, 'prompt'])->name('register.verify');
+    Route::post('register/verify', [SelfServiceRegistrationController::class, 'verify'])->middleware('throttle:10,1')->name('register.verify.store');
+    Route::post('register/resend', [SelfServiceRegistrationController::class, 'resend'])->middleware('throttle:3,1')->name('register.resend');
+});
 
 Route::prefix('developer')->name('developer.')->group(function (): void {
     Route::middleware('guest:platform')->group(function (): void {

@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\School;
+use App\Models\User;
+use App\Tenancy\SchoolScope;
 use App\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -41,6 +43,13 @@ class ResolveSchool
                         ->orWhere('slug', strtolower($code));
                 })
                 ->first();
+        }
+
+        if (! $school && $request->filled('email')) {
+            $user = User::withoutGlobalScope(SchoolScope::class)
+                ->where('email', mb_strtolower(trim((string) $request->input('email'))))
+                ->first(['school_id']);
+            if ($user) $school = School::query()->find($user->school_id);
         }
 
         if (! $school && ($user = $request->user()) && $user->school_id) {

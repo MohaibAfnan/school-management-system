@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { ref } from 'vue';
 
 defineOptions({
     layout: {
@@ -19,18 +18,10 @@ defineOptions({
     },
 });
 
-const props = defineProps<{
+defineProps<{
     status?: string;
     canResetPassword: boolean;
-    schoolCode?: string;
 }>();
-
-const workspaceCode = ref(props.schoolCode ?? '');
-
-const normalizeSchoolCode = (data: Record<string, unknown>) => ({
-    ...data,
-    school_code: String(data.school_code ?? '').trim().toUpperCase(),
-});
 </script>
 
 <template>
@@ -45,29 +36,11 @@ const normalizeSchoolCode = (data: Record<string, unknown>) => ({
 
     <Form
         v-bind="store.form()"
-        :transform="normalizeSchoolCode"
         :reset-on-success="['password']"
         v-slot="{ errors, processing }"
         class="flex flex-col gap-6"
     >
         <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="school_code">School workspace</Label>
-                <Input
-                    id="school_code"
-                    type="text"
-                    name="school_code"
-                    required
-                    v-model="workspaceCode"
-                    v-focus
-                    :tabindex="1"
-                    autocomplete="organization"
-                    placeholder="School code"
-                    autocapitalize="characters"
-                />
-                <InputError :message="errors.school_code" />
-            </div>
-
             <div class="grid gap-2">
                 <Label for="email">Email address</Label>
                 <Input
@@ -75,7 +48,8 @@ const normalizeSchoolCode = (data: Record<string, unknown>) => ({
                     type="email"
                     name="email"
                     required
-                    :tabindex="2"
+                    v-focus
+                    :tabindex="1"
                     autocomplete="email"
                     placeholder="email@example.com"
                 />
@@ -98,7 +72,7 @@ const normalizeSchoolCode = (data: Record<string, unknown>) => ({
                     id="password"
                     name="password"
                     required
-                    :tabindex="3"
+                    :tabindex="2"
                     autocomplete="current-password"
                     placeholder="Password"
                 />
@@ -107,7 +81,7 @@ const normalizeSchoolCode = (data: Record<string, unknown>) => ({
 
             <div class="flex items-center justify-between">
                 <Label for="remember" class="flex items-center space-x-3">
-                    <Checkbox id="remember" name="remember" :tabindex="4" />
+                    <Checkbox id="remember" name="remember" :tabindex="3" />
                     <span>Remember me</span>
                 </Label>
             </div>
@@ -115,7 +89,7 @@ const normalizeSchoolCode = (data: Record<string, unknown>) => ({
             <Button
                 type="submit"
                 class="mt-4 w-full"
-                :tabindex="5"
+                :tabindex="4"
                 :disabled="processing"
                 data-test="login-button"
             >
@@ -125,7 +99,7 @@ const normalizeSchoolCode = (data: Record<string, unknown>) => ({
         </div>
 
         <p class="text-center text-sm text-muted-foreground">
-            Need an account? Contact your school administrator.
+            New school? <TextLink href="/register">Start your free 7-day trial</TextLink>
         </p>
     </Form>
 </template>

@@ -18,7 +18,6 @@ defineOptions({
 
 defineProps<{
     status?: string;
-    schoolCode?: string;
 }>();
 </script>
 
@@ -34,19 +33,6 @@ defineProps<{
 
     <div class="space-y-6">
         <Form v-bind="email.form()" v-slot="{ errors, processing }">
-            <div class="mb-4 grid gap-2">
-                <Label for="school_code">School workspace</Label>
-                <Input
-                    id="school_code"
-                    type="text"
-                    name="school_code"
-                    required
-                    autocomplete="organization"
-                    placeholder="School code"
-                    :value="schoolCode"
-                />
-                <InputError :message="errors.school_code" />
-            </div>
             <div class="grid gap-2">
                 <Label for="email">Email address</Label>
                 <Input
