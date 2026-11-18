@@ -8,6 +8,7 @@ use App\Tenancy\SchoolScope;
 use App\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class ResolveSchool
@@ -30,9 +31,18 @@ class ResolveSchool
 
         $school = null;
         $sessionSchoolId = $request->session()->get('active_school_id');
+        $authenticatedUserId = Auth::guard('web')->id();
+        $authenticatedSchoolId = $authenticatedUserId
+            ? User::withoutGlobalScope(SchoolScope::class)->whereKey($authenticatedUserId)->value('school_id')
+            : null;
 
-        if ($sessionSchoolId) {
+        if ($sessionSchoolId && (! $authenticatedSchoolId || (int) $sessionSchoolId === (int) $authenticatedSchoolId)) {
             $school = School::query()->find($sessionSchoolId);
+        }
+
+        if (! $school && $authenticatedSchoolId) {
+            $school = School::query()->find($authenticatedSchoolId);
+            if ($school) $request->session()->put('active_school_id', $school->id);
         }
 
         if (! $school && $request->filled('school_code')) {
@@ -50,14 +60,6 @@ class ResolveSchool
                 ->where('email', mb_strtolower(trim((string) $request->input('email'))))
                 ->first(['school_id']);
             if ($user) $school = School::query()->find($user->school_id);
-        }
-
-        if (! $school && ($user = $request->user()) && $user->school_id) {
-            $school = School::query()->find($user->school_id);
-
-            if ($school) {
-                $request->session()->put('active_school_id', $school->id);
-            }
         }
 
         if ($school?->status !== null && $school->status !== 'active') {

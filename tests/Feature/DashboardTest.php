@@ -24,4 +24,13 @@ class DashboardTest extends TestCase
         $response = $this->get(route('dashboard'));
         $response->assertOk();
     }
+
+    public function test_authenticated_users_resolve_their_school_when_the_tenant_session_key_is_missing()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->withSession(['active_school_id' => null]);
+
+        $this->get(route('dashboard'))->assertOk();
+        $this->assertSame($user->school_id, session('active_school_id'));
+    }
 }
