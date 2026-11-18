@@ -27,7 +27,7 @@ class SelfServiceRegistrationTest extends TestCase
         $owner = User::withoutGlobalScopes()->where('email', 'owner@example.com')->firstOrFail();
         $this->assertNotNull($owner->school_id);
         $this->assertNull($owner->email_verified_at);
-        $this->assertDatabaseHas('school_subscriptions', ['school_id' => $owner->school_id, 'status' => 'pending_verification', 'trial_ends_at' => null]);
+        $this->assertDatabaseHas('school_subscriptions', ['school_id' => $owner->school_id, 'status' => 'pending', 'trial_ends_at' => null]);
         $this->assertDatabaseHas('email_otps', ['user_id' => $owner->id]);
         Notification::assertSentTo($owner, EmailOtpNotification::class);
     }
@@ -59,6 +59,6 @@ class SelfServiceRegistrationTest extends TestCase
         ]);
         $this->from(route('register.verify'))->post(route('register.verify.store'), ['code' => '000000'])->assertSessionHasErrors('code');
         $this->assertGuest();
-        $this->assertDatabaseHas('school_subscriptions', ['status' => 'pending_verification', 'trial_ends_at' => null]);
+        $this->assertDatabaseHas('school_subscriptions', ['status' => 'pending', 'trial_ends_at' => null]);
     }
 }

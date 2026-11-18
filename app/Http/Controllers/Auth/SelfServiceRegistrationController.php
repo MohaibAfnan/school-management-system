@@ -62,7 +62,7 @@ class SelfServiceRegistrationController extends Controller
             $owner->forceFill(['email_verified_at' => null, 'must_change_password' => false])->save();
             SchoolSubscription::query()->create([
                 'school_id' => $school->id,
-                'status' => 'pending_verification',
+                'status' => 'pending',
                 'starts_at' => null,
                 'trial_ends_at' => null,
             ]);
