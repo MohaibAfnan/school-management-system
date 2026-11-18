@@ -4,6 +4,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SchoolSmtpSettingsController;
 use App\Http\Controllers\Settings\SchoolActivationController;
+use App\Http\Middleware\RequirePasswordUnlessTemporary;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
@@ -13,7 +14,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/mail', [SchoolSmtpSettingsController::class, 'edit'])->name('school-mail.edit');
     Route::put('settings/mail', [SchoolSmtpSettingsController::class, 'update'])->name('school-mail.update');
     Route::post('settings/mail/test', [SchoolSmtpSettingsController::class, 'test'])
@@ -29,13 +30,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
+    Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
+});
 
+Route::middleware(['auth'])->group(function () {
+    Route::get('settings/security', [SecurityController::class, 'edit'])
+        ->middleware(RequirePasswordUnlessTemporary::class)
+        ->name('security.edit');
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
-
-    Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

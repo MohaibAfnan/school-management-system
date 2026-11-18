@@ -9,11 +9,15 @@ import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/security';
 import type { Props as ManageTwoFactorProps } from '@/components/ManageTwoFactor.vue';
 import ManageTwoFactor from '@/components/ManageTwoFactor.vue';
+import ManagePasskeys from '@/components/ManagePasskeys.vue';
+import type { Passkey } from '@/types/auth';
 
 // oxfmt-ignore
 type Props = {
     passwordRules: string;
     mustChangePassword: boolean;
+    canManagePasskeys: boolean;
+    passkeys: Passkey[];
 } & ManageTwoFactorProps;
 
 const props = defineProps<Props>();
@@ -113,4 +117,5 @@ defineOptions({
         :requiresConfirmation="requiresConfirmation"
         :twoFactorEnabled="twoFactorEnabled"
     />
+    <ManagePasskeys :canManagePasskeys="canManagePasskeys" :passkeys="passkeys" />
 </template>

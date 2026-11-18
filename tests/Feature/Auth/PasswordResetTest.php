@@ -33,7 +33,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post(route('password.email'), ['email' => $user->email]);
+        $this->post(route('password.email'), ['school_code' => 'DEMO', 'email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class);
     }
@@ -44,7 +44,7 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post(route('password.email'), ['email' => $user->email]);
+        $this->post(route('password.email'), ['school_code' => 'DEMO', 'email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
             $response = $this->get(route('password.reset', $notification->token));
@@ -61,10 +61,11 @@ class PasswordResetTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->post(route('password.email'), ['email' => $user->email]);
+        $this->post(route('password.email'), ['school_code' => 'DEMO', 'email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
             $response = $this->post(route('password.update'), [
+                'school_code' => 'DEMO',
                 'token' => $notification->token,
                 'email' => $user->email,
                 'password' => 'password',
@@ -84,6 +85,7 @@ class PasswordResetTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->post(route('password.update'), [
+            'school_code' => 'DEMO',
             'token' => 'invalid-token',
             'email' => $user->email,
             'password' => 'newpassword123',
