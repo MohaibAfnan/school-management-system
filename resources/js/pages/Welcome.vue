@@ -41,9 +41,6 @@ import { ArrowRight, BookOpenCheck, GraduationCap, ShieldCheck } from '@lucide/v
                         <a href="/login" class="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200">
                             Sign in to your school <ArrowRight class="size-4" />
                         </a>
-                        <a href="/developer/login" class="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/5">
-                            Developer portal
-                        </a>
                     </div>
                     <div class="mt-12 grid max-w-xl gap-5 border-t border-white/10 pt-7 sm:grid-cols-3">
                         <div class="flex gap-3 text-sm text-slate-300"><BookOpenCheck class="mt-0.5 size-4 shrink-0 text-cyan-300" /> Academics and learning</div>

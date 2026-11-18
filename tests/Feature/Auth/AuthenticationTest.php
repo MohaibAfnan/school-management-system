@@ -4,7 +4,6 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -24,12 +23,27 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->post(route('login.store'), [
+            'school_code' => 'demo',
             'email' => $user->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_unverified_school_accounts_reach_the_dashboard_after_sign_in()
+    {
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->post(route('login.store'), [
+            'school_code' => 'demo',
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect(route('dashboard', absolute: false));
+        $this->get(route('dashboard'))->assertOk();
     }
 
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
@@ -44,6 +58,7 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->withTwoFactor()->create();
 
         $response = $this->post(route('login'), [
+            'school_code' => 'DEMO',
             'email' => $user->email,
             'password' => 'password',
         ]);
@@ -58,6 +73,7 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $this->post(route('login.store'), [
+            'school_code' => 'DEMO',
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
@@ -79,13 +95,13 @@ class AuthenticationTest extends TestCase
     public function test_users_are_rate_limited()
     {
         $user = User::factory()->create();
+        $credentials = ['school_code' => 'DEMO', 'email' => $user->email, 'password' => 'wrong-password'];
 
-        RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+        foreach (range(1, 5) as $_) {
+            $this->post(route('login.store'), $credentials);
+        }
 
-        $response = $this->post(route('login.store'), [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
+        $response = $this->post(route('login.store'), $credentials);
 
         $response->assertTooManyRequests();
     }

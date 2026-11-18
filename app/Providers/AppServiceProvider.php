@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,14 +45,16 @@ class AppServiceProvider extends ServiceProvider
             $schoolCode = strtoupper(trim((string) $request->input('school_code')));
             $school = School::query()
                 ->where(function ($query) use ($schoolCode): void {
-                    $query->where('code', $schoolCode)
+                    $query->whereRaw('UPPER(code) = ?', [$schoolCode])
                         ->orWhere('slug', strtolower($schoolCode));
                 })
                 ->where('status', 'active')
                 ->first();
 
             if (! $school) {
-                return null;
+                throw ValidationException::withMessages([
+                    'school_code' => 'Enter the active school workspace code provided by your school.',
+                ]);
             }
 
             app(TenantContext::class)->set($school);

@@ -35,7 +35,7 @@ Route::prefix('developer')->name('developer.')->group(function (): void {
     });
 });
 
-Route::middleware(['auth', 'verified', 'school.license'])->group(function () {
+Route::middleware(['auth', 'school.license'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 

@@ -7,7 +7,7 @@ defineOptions({ layout: null });
 </script>
 
 <template>
-    <Head title="Developer sign in" />
+    <Head title="Developer sign in"><meta name="robots" content="noindex, nofollow"></Head>
     <main class="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-5 py-12 text-white">
         <div class="absolute -left-32 top-[-8rem] size-[30rem] rounded-full bg-cyan-500/10 blur-3xl" />
         <div class="absolute -right-32 bottom-[-10rem] size-[32rem] rounded-full bg-blue-500/10 blur-3xl" />

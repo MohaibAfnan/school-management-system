@@ -14,7 +14,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('settings/mail', [SchoolSmtpSettingsController::class, 'edit'])->name('school-mail.edit');
     Route::put('settings/mail', [SchoolSmtpSettingsController::class, 'update'])->name('school-mail.update');
     Route::post('settings/mail/test', [SchoolSmtpSettingsController::class, 'test'])

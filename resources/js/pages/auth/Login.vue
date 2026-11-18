@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
+import { ref } from 'vue';
 
 defineOptions({
     layout: {
@@ -18,11 +19,18 @@ defineOptions({
     },
 });
 
-defineProps<{
+const props = defineProps<{
     status?: string;
     canResetPassword: boolean;
     schoolCode?: string;
 }>();
+
+const workspaceCode = ref(props.schoolCode ?? '');
+
+const normalizeSchoolCode = (data: Record<string, unknown>) => ({
+    ...data,
+    school_code: String(data.school_code ?? '').trim().toUpperCase(),
+});
 </script>
 
 <template>
@@ -37,6 +45,7 @@ defineProps<{
 
     <Form
         v-bind="store.form()"
+        :transform="normalizeSchoolCode"
         :reset-on-success="['password']"
         v-slot="{ errors, processing }"
         class="flex flex-col gap-6"
@@ -49,11 +58,12 @@ defineProps<{
                     type="text"
                     name="school_code"
                     required
+                    v-model="workspaceCode"
                     v-focus
                     :tabindex="1"
                     autocomplete="organization"
                     placeholder="School code"
-                    :value="schoolCode"
+                    autocapitalize="characters"
                 />
                 <InputError :message="errors.school_code" />
             </div>
