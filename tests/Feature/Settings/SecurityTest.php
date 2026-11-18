@@ -98,6 +98,18 @@ class SecurityTest extends TestCase
         $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
     }
 
+    public function test_temporary_password_users_are_sent_to_a_password_change_screen_without_an_extra_confirmation_step()
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['must_change_password' => true])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('security.edit', absolute: false));
+
+        $this->get(route('security.edit'))->assertOk();
+    }
+
     public function test_correct_password_must_be_provided_to_update_password()
     {
         $user = User::factory()->create();
