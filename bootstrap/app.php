@@ -27,6 +27,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'school.license' => EnsureSchoolLicenseActive::class,
         ]);
 
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Auth\Middleware\Authenticate::class,
+            prepend: ResolveSchool::class,
+        );
+        $middleware->appendToPriorityList(
+            after: \Illuminate\Auth\Middleware\Authenticate::class,
+            append: EnsureTemporaryPasswordChanged::class,
+        );
+
         $middleware->web(append: [
             HandleAppearance::class,
             ResolveSchool::class,

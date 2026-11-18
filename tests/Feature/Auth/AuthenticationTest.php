@@ -30,6 +30,7 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+        $this->get(route('dashboard'))->assertOk();
     }
 
     public function test_unverified_school_accounts_reach_the_dashboard_after_sign_in()

@@ -44,6 +44,7 @@ class SelfServiceRegistrationTest extends TestCase
         $code = (string) (new \ReflectionProperty($notification, 'code'))->getValue($notification);
         $this->post(route('register.verify.store'), ['code' => $code])->assertRedirect(route('dashboard', absolute: false));
         $this->assertAuthenticatedAs($owner);
+        $this->get(route('dashboard'))->assertOk();
         $this->assertNotNull($owner->fresh()->email_verified_at);
         $subscription = SchoolSubscription::query()->where('school_id', $owner->school_id)->firstOrFail();
         $this->assertSame('trialing', $subscription->status);

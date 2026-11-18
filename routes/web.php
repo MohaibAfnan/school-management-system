@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\SelfServiceRegistrationController;
+use App\Http\Middleware\ResolveSchool;
 use App\Http\Controllers\Developer\DeveloperAuthController;
 use App\Http\Controllers\Developer\DeveloperDashboardController;
 use App\Http\Controllers\Developer\DeveloperPlanController;
